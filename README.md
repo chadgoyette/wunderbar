@@ -14,3 +14,5 @@ Hardware:
 Pin connections to pi:
 HX711 - Pin SCK->GPIO-17
       - Pin DO->GPIO-18
+MLDC Motor Driver
+      -Pin SV->GPIO-5
