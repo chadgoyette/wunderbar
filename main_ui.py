@@ -58,6 +58,7 @@ class MainUI(QWidget):
         self.motor_stopped = False
         self.settings_window = None  # Initialize settings window as None
         self.motor_settings_window = None  # Initialize motor settings window as None
+        self.original_offset = self.load_cell.offset  # Store the original offset
 
         # --- Rotor speed display (absolute positioning) ---
         self.rotor_speed_label = QLabel(f"Rotor Speed Setting: {self.app_settings['rotor_speed']}%", self)
@@ -213,6 +214,7 @@ class MainUI(QWidget):
         self.abort_button.show()  # Show the Abort button when the process starts
         self.motor_stopped = False
         self.state = 1
+        self.original_offset = self.load_cell.offset  # Save the original offset before zeroing
         self.update_ui_for_state()
 
     def next_step(self):
@@ -355,6 +357,8 @@ class MainUI(QWidget):
         
         self.abort_button.hide()  # Hide the Abort button when resetting the UI
         self.rotor_speed_label.show()  # Show the rotor speed label when returning to the start screen
+        self.load_cell.offset = self.original_offset  # Restore the original offset
+        print(f"[INFO] Offset reset to original value: {self.original_offset:.2f}")
         self.state = 0
         self.motor_stopped = False
 
@@ -419,6 +423,8 @@ class MainUI(QWidget):
 
         self.abort_button.hide()  # Hide the Abort button when resetting the UI
         self.rotor_speed_label.show()  # Show the rotor speed label when returning to the start screen
+        self.load_cell.offset = self.original_offset  # Restore the original offset
+        print(f"[INFO] Offset reset to original value: {self.original_offset:.2f}")
         self.state = 0
         self.motor_stopped = False
 
