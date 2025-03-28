@@ -12,6 +12,7 @@ from hx711_reader import LoadCell  # Your load cell class
 from motor import BLDCMotor       # Your motor control class
 from settings_ui import SettingsWindow  # Import the SettingsWindow class
 from ui import WeightDisplay  # Import the WeightDisplay class
+import json
 
 # Conversion: 1 oz ≈ 28.35 grams
 GRAMS_TO_OZ = 1 / 28.35
@@ -59,6 +60,7 @@ class MainUI(QWidget):
         self.settings_window = None  # Initialize settings window as None
         self.motor_settings_window = None  # Initialize motor settings window as None
         self.original_offset = self.load_cell.offset  # Store the original offset
+        self.overshoot_compensation = self.load_overshoot_compensation()
 
         # --- Rotor speed display (absolute positioning) ---
         self.rotor_speed_label = QLabel(f"Rotor Speed Setting: {self.app_settings['rotor_speed']}%", self)
@@ -263,6 +265,22 @@ class MainUI(QWidget):
             self.abort_button.hide()  # Hide the Abort button before showing the Finish button
             self.reset_ui()  # Return to the main page after clicking Finish
 
+    def load_overshoot_compensation(self):
+        """Load overshoot compensation data from calibration.json."""
+        try:
+            with open("calibration.json", "r") as f:
+                data = json.load(f)
+            return data.get("overshoot_compensation", {})
+        except Exception as e:
+            print(f"[ERROR] Failed to load overshoot compensation data: {e}")
+            return {}
+
+    def get_compensated_target(self, target_weight):
+        """Adjust the target weight based on the rotor speed and overshoot compensation."""
+        rotor_speed = self.app_settings["rotor_speed"]
+        compensation = self.overshoot_compensation.get(str(int(rotor_speed)), 0)
+        return max(target_weight - compensation, 0)  # Ensure the target is not negative
+
     def update_weight(self):
         # Ensure gauge is initialized before updating its value
         if not hasattr(self, 'gauge'):
@@ -292,20 +310,24 @@ class MainUI(QWidget):
         weight_grams = self.load_cell.get_weight()
         weight_oz = weight_grams * GRAMS_TO_OZ
 
-        if self.state == 2:
+        if self.state == 2:  # Ice stage
             target = self.recipe.get("Ice", 0)
-        elif self.state == 3:
+            compensated_target = self.get_compensated_target(target)  # Use compensated target internally
+        elif self.state == 3:  # Flavor stage
             target = self.recipe.get("Flavor", 0)
+            compensated_target = target  # No compensation for Flavor
         else:
             target = 0
+            compensated_target = target
 
+        # Update the UI with the actual target weight
         self.instruction_label.setText(
-            f"Current weight: {weight_oz:.2f} oz (Target: {target} oz)"
+            f"Current weight: {weight_oz:.2f} oz (Target: {target:.2f} oz)"
         )
-        self.gauge.setValue(weight_oz, target)
+        self.gauge.setValue(weight_oz, target)  # Use the actual target for the gauge
 
-        # Enable or disable the next button based on the target weight
-        if (self.state == 2 or self.state == 3) and weight_oz >= target:
+        # Use the compensated target for motor shutdown logic
+        if (self.state == 2 or self.state == 3) and weight_oz >= compensated_target:
             if self.state == 2 and not self.motor_stopped:
                 try:
                     self.motor.stop()
