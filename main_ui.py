@@ -50,7 +50,7 @@ class MainUI(QWidget):
         self.app_settings = settings.load_settings()
         print("[DEBUG] Initializing hardware components...")
         self.load_cell = LoadCell(calibration_factor=0.002965)  # Re-enable LoadCell initialization
-        self.motor = BLDCMotor(pwm_pin=5, speed_pin=16, en_pin=20, brk_pin=19)  # Re-enable Motor initialization
+        self.motor = BLDCMotor(pwm_pin=5, speed_pin=16, en_pin=20, brk_pin=19)  # Initialize motor with specific pins
         print("[DEBUG] MainUI initialized.")
         self.setWindowTitle("Ice Shaver Main UI")
         self.setFixedSize(800, 480)
@@ -61,6 +61,7 @@ class MainUI(QWidget):
         self.motor_settings_window = None  # Initialize motor settings window as None
         self.original_offset = self.load_cell.offset  # Store the original offset
         self.overshoot_compensation = self.load_overshoot_compensation()
+        self.interlock_popup_shown = False  # Track if the interlock popup is shown
 
         # --- Rotor speed display (absolute positioning) ---
         self.rotor_speed_label = QLabel(f"Rotor Speed Setting: {self.app_settings['rotor_speed']}%", self)
@@ -175,6 +176,14 @@ class MainUI(QWidget):
         main_layout.addLayout(button_row_layout)  # Add the button row layout to the main layout
         self.setLayout(main_layout)
 
+        self.elapsed_time_label = QLabel("Elapsed Time: 0:00", self)  # Add elapsed time label
+        self.elapsed_time_label.setAlignment(Qt.AlignCenter)
+        self.elapsed_time_label.setStyleSheet("font-size: 18px; color: white;")
+        self.elapsed_time_label.hide()  # Initially hidden
+        main_layout.addWidget(self.elapsed_time_label)  # Add to the main layout
+        self.elapsed_time = 0  # Initialize elapsed time in seconds
+        self.elapsed_time_start = None  # Initialize start time for elapsed time
+
         self.timer = QTimer()
         self.timer.setInterval(100)
         self.timer.timeout.connect(self.update_weight)
@@ -185,9 +194,22 @@ class MainUI(QWidget):
         button.setStyleSheet("font-size: 16px; background-color: #888; color: white;")
 
     def show_interlock_warning(self):
-        QMessageBox.warning(self, "Cover Open", "Cover is open – motor stopped for safety. Please close the cover and try again.")
+        """Display a popup warning when the interlock is triggered."""
+        if not self.interlock_popup_shown:
+            self.interlock_popup_shown = True
+            QMessageBox.warning(
+                self,
+                "Safety Interlock Triggered",
+                "The lid is open! The motor has been stopped for safety. Close the lid and acknowledge this message to continue."
+            )
+            self.interlock_popup_shown = False
 
     def start_process(self):
+        """Start the process, ensuring the interlock is not triggered."""
+        if self.motor.interlock_triggered():
+            self.show_interlock_warning()
+            return
+
         selected_size = None
         for size, btn in self.size_buttons.items():
             if btn.isChecked():
@@ -220,8 +242,8 @@ class MainUI(QWidget):
         self.update_ui_for_state()
 
     def next_step(self):
+        """Handle the next step in the process."""
         if self.motor.interlock_triggered():
-            self.motor.check_interlock_and_stop()
             self.show_interlock_warning()
             return
 
@@ -232,6 +254,9 @@ class MainUI(QWidget):
             self.load_cell.zero(current_weight_oz)  # Zero the scale based on the current weight
             time.sleep(0.5)
             self.state = 2
+            self.elapsed_time_start = time.time()  # Record the start time
+            self.elapsed_time_label.setText("Elapsed Time: 0.0s")
+            self.elapsed_time_label.show()  # Show the elapsed time label
             self.instruction_label.setText("Shaving ice... Please wait.")
             if not self.motor.start():
                 self.show_interlock_warning()
@@ -245,6 +270,7 @@ class MainUI(QWidget):
                 self.motor.stop()
             except Exception as e:
                 print("[WARNING] Error stopping motor:", e)
+            self.elapsed_time_label.hide()  # Hide the elapsed time label
             self.instruction_label.setText("Ice shaving complete. Zeroing cup for flavor addition...")
             QApplication.processEvents()
             current_weight_oz = self.load_cell.get_weight() * GRAMS_TO_OZ  # Get current weight in ounces
@@ -282,6 +308,7 @@ class MainUI(QWidget):
         return max(target_weight - compensation, 0)  # Ensure the target is not negative
 
     def update_weight(self):
+        """Update the weight and handle interlock checks."""
         # Ensure gauge is initialized before updating its value
         if not hasattr(self, 'gauge'):
             self.gauge = GaugeWidget()
@@ -313,6 +340,12 @@ class MainUI(QWidget):
         if self.state == 2:  # Ice stage
             target = self.recipe.get("Ice", 0)
             compensated_target = self.get_compensated_target(target)  # Use compensated target internally
+
+            # Calculate elapsed time using the system clock
+            if self.elapsed_time_start is not None and not self.motor_stopped:
+                elapsed_time = time.time() - self.elapsed_time_start
+                self.elapsed_time_label.setText(f"Elapsed Time: {elapsed_time:.1f}s")
+
         elif self.state == 3:  # Flavor stage
             target = self.recipe.get("Flavor", 0)
             compensated_target = target  # No compensation for Flavor
