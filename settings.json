@@ -18,6 +18,53 @@
                 "Ice": 8.1
             }
         },
+        "Strawberry Banana (w/ Yogurt) [Time]": {
+            "Small": {
+                "Time": 2.0,
+                "speed_time_mapping": {
+                    "10": 6.0,
+                    "20": 6.0,
+                    "30": 8.0,
+                    "40": 5.0,
+                    "50": 4.0,
+                    "60": 3.0,
+                    "70": 3.0,
+                    "80": 2.5,
+                    "90": 2.0,
+                    "100": 1.8
+                }
+            },
+            "Medium": {
+                "Time": 3.6,
+                "speed_time_mapping": {
+                    "10": 18.0,
+                    "20": 18.0,
+                    "30": 18.0,
+                    "40": 8.4,
+                    "50": 7.0,
+                    "60": 3.6,
+                    "70": 3.0,
+                    "80": 2.5,
+                    "90": 2.0,
+                    "100": 1.8
+                }
+            },
+            "Large": {
+                "Time": 4.0,
+                "speed_time_mapping": {
+                    "10": 18.0,
+                    "20": 18.0,
+                    "30": 18.0,
+                    "40": 11.5,
+                    "50": 7.0,
+                    "60": 5.0,
+                    "70": 3.0,
+                    "80": 2.5,
+                    "90": 2.0,
+                    "100": 1.8
+                }
+            }
+        },
         "Strawberry Banana (No Yogurt)": {
             "Small": {
                 "Flavor": 7.1,
@@ -33,6 +80,17 @@
                 "Flavor": 11.6,
                 "Yogurt": 0.0,
                 "Ice": 8.1
+            }
+        },
+        "Strawberry Banana (No Yogurt) [Time]": {
+            "Small": {
+                "Time": 10.0
+            },
+            "Medium": {
+                "Time": 15.0
+            },
+            "Large": {
+                "Time": 20.0
             }
         },
         "Mango Pineapple (w/ Yogurt)": {
@@ -52,6 +110,53 @@
                 "Ice": 8.1
             }
         },
+        "Mango Pineapple (w/ Yogurt) [Time]": {
+            "Small": {
+                "Time": 10.0,
+                "speed_time_mapping": {
+                    "10": 6.0,
+                    "20": 6.0,
+                    "30": 5.5,
+                    "40": 5.0,
+                    "50": 4.0,
+                    "60": 3.6,
+                    "70": 3.0,
+                    "80": 2.5,
+                    "90": 2.0,
+                    "100": 1.8
+                }
+            },
+            "Medium": {
+                "Time": 15.0,
+                "speed_time_mapping": {
+                    "10": 6.0,
+                    "20": 6.0,
+                    "30": 5.5,
+                    "40": 5.0,
+                    "50": 4.0,
+                    "60": 3.6,
+                    "70": 3.0,
+                    "80": 2.5,
+                    "90": 2.0,
+                    "100": 1.8
+                }
+            },
+            "Large": {
+                "Time": 20.0,
+                "speed_time_mapping": {
+                    "10": 6.0,
+                    "20": 6.0,
+                    "30": 5.5,
+                    "40": 5.0,
+                    "50": 4.0,
+                    "60": 3.6,
+                    "70": 3.0,
+                    "80": 2.5,
+                    "90": 2.0,
+                    "100": 1.8
+                }
+            }
+        },
         "Mango Pineapple (No Yogurt)": {
             "Small": {
                 "Flavor": 7.1,
@@ -67,6 +172,17 @@
                 "Flavor": 11.6,
                 "Yogurt": 0.0,
                 "Ice": 8.1
+            }
+        },
+        "Mango Pineapple (No Yogurt) [Time]": {
+            "Small": {
+                "Time": 10.0
+            },
+            "Medium": {
+                "Time": 15.0
+            },
+            "Large": {
+                "Time": 20.0
             }
         },
         "Caramel Frappe": {
@@ -86,6 +202,17 @@
                 "Ice": 10.0
             }
         },
+        "Caramel Frappe [Time]": {
+            "Small": {
+                "Time": 10.0
+            },
+            "Medium": {
+                "Time": 15.0
+            },
+            "Large": {
+                "Time": 20.0
+            }
+        },
         "Mocha Frappe": {
             "Small": {
                 "Flavor": 5.9,
@@ -101,6 +228,17 @@
                 "Flavor": 10.0,
                 "Yogurt": 0.0,
                 "Ice": 10.0
+            }
+        },
+        "Mocha Frappe [Time]": {
+            "Small": {
+                "Time": 10.0
+            },
+            "Medium": {
+                "Time": 15.0
+            },
+            "Large": {
+                "Time": 20.0
             }
         }
     }

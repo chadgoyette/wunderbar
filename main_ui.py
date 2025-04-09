@@ -208,9 +208,27 @@ class MainUI(QWidget):
         self.selected_flavor = self.flavor_dropdown.currentText()
         self.selected_size = selected_size
         self.recipe = self.app_settings["sizes"].get(self.selected_flavor, {}).get(self.selected_size, {})
+        self.is_time_based = "speed_time_mapping" in self.recipe  # Check if the recipe is time-based
+
         if not self.recipe:
             self.instruction_label.setText("Recipe not found!")
             return
+
+        # Print the settings being used
+        print(f"[INFO] Starting process with settings:")
+        print(f"  Flavor: {self.selected_flavor}")
+        print(f"  Size: {self.selected_size}")
+        print(f"  Rotor Speed: {self.app_settings['rotor_speed']}%")
+        if self.is_time_based:
+            rotor_speed = int(self.app_settings["rotor_speed"])
+            speed_time_mapping = self.recipe.get("speed_time_mapping", {})
+            target_time = speed_time_mapping.get(str(rotor_speed), None)
+            print(f"  Time-Based Recipe: Yes")
+            print(f"  Speed-Time Mapping: {speed_time_mapping}")
+            print(f"  Mapped Time for {rotor_speed}% Speed: {target_time} seconds")
+        else:
+            print(f"  Time-Based Recipe: No")
+            print(f"  Recipe Details: {self.recipe}")
 
         self.flavor_dropdown.hide()
         for btn in self.size_buttons.values():
@@ -323,40 +341,73 @@ class MainUI(QWidget):
         weight_oz = weight_grams * GRAMS_TO_OZ
 
         if self.state == 2:  # Ice stage
-            target = self.recipe.get("Ice", 0)
-            compensated_target = self.get_compensated_target(target)  # Use compensated target internally
+            if self.is_time_based:
+                # Time-based logic using speed_time_mapping
+                rotor_speed = int(self.app_settings["rotor_speed"])
+                speed_time_mapping = self.recipe.get("speed_time_mapping", {})
+                target_time = speed_time_mapping.get(str(rotor_speed), None)
 
-            # Calculate elapsed time using the system clock
-            if self.elapsed_time_start is not None and not self.motor_stopped:
-                elapsed_time = time.time() - self.elapsed_time_start
-                self.elapsed_time_label.setText(f"Elapsed Time: {elapsed_time:.1f}s")
+                if target_time is None:
+                    print(f"[ERROR] No time mapping found for speed {rotor_speed}%")
+                    self.timer.stop()
+                    self.motor.stop()
+                    self.instruction_label.setText("Error: Invalid speed-time mapping.")
+                    return
+
+                if self.elapsed_time_start is not None and not self.motor_stopped:
+                    elapsed_time = time.time() - self.elapsed_time_start
+                    self.elapsed_time_label.setText(f"Elapsed Time: {elapsed_time:.1f}s")
+                    if elapsed_time >= target_time:
+                        try:
+                            self.motor.stop()
+                        except Exception as e:
+                            print("[WARNING] Error stopping motor:", e)
+                        self.motor_stopped = True
+                        self.next_button.setEnabled(True)
+                        self.next_button.show()  # Ensure the button is visible
+            else:
+                # Weight-based logic
+                target = self.recipe.get("Ice", 0)
+                compensated_target = self.get_compensated_target(target)
+                weight_grams = self.load_cell.get_weight()
+                weight_oz = weight_grams * GRAMS_TO_OZ
+
+                self.instruction_label.setText(
+                    f"Current weight: {weight_oz:.2f} oz (Target: {target:.2f} oz)"
+                )
+                self.gauge.setValue(weight_oz, target)
+
+                if weight_oz >= compensated_target:
+                    if not self.motor_stopped:
+                        try:
+                            self.motor.stop()
+                        except Exception as e:
+                            print("[WARNING] Error stopping motor:", e)
+                        self.motor_stopped = True
+                    self.next_button.setEnabled(True)
+                    self.next_button.show()  # Ensure the button is visible
 
         elif self.state == 3:  # Flavor stage
             target = self.recipe.get("Flavor", 0)
             compensated_target = target  # No compensation for Flavor
-        else:
-            target = 0
-            compensated_target = target
+            self.instruction_label.setText(
+                f"Current weight: {weight_oz:.2f} oz (Target: {target:.2f} oz)"
+            )
+            self.gauge.setValue(weight_oz, target)  # Use the actual target for the gauge
 
-        # Update the UI with the actual target weight
-        self.instruction_label.setText(
-            f"Current weight: {weight_oz:.2f} oz (Target: {target:.2f} oz)"
-        )
-        self.gauge.setValue(weight_oz, target)  # Use the actual target for the gauge
-
-        # Use the compensated target for motor shutdown logic
-        if (self.state == 2 or self.state == 3) and weight_oz >= compensated_target:
-            if self.state == 2 and not self.motor_stopped:
-                try:
-                    self.motor.stop()
-                except Exception as e:
-                    print("[WARNING] Error stopping motor:", e)
-                self.motor_stopped = True
-            self.next_button.setEnabled(True)
-            self.next_button.show()  # Ensure the button is visible
-        elif self.state == 2 or self.state == 3:
-            self.next_button.setEnabled(False)
-            self.next_button.show()  # Ensure the button is visible
+            # Use the compensated target for motor shutdown logic
+            if (self.state == 2 or self.state == 3) and weight_oz >= compensated_target:
+                if self.state == 2 and not self.motor_stopped:
+                    try:
+                        self.motor.stop()
+                    except Exception as e:
+                        print("[WARNING] Error stopping motor:", e)
+                    self.motor_stopped = True
+                self.next_button.setEnabled(True)
+                self.next_button.show()  # Ensure the button is visible
+            elif self.state == 2 or self.state == 3:
+                self.next_button.setEnabled(False)
+                self.next_button.show()  # Ensure the button is visible
 
     def update_ui_for_state(self):
         if self.state == 1:

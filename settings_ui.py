@@ -2,7 +2,7 @@
 import sys
 from PyQt5.QtWidgets import (
     QApplication, QWidget, QLabel, QPushButton, QVBoxLayout, QGridLayout, 
-    QComboBox, QDoubleSpinBox
+    QComboBox, QDoubleSpinBox, QTableWidget, QTableWidgetItem, QHeaderView
 )
 from PyQt5.QtCore import Qt
 import settings
@@ -95,6 +95,30 @@ class SettingsWindow(QWidget):
 
         layout.addLayout(size_layout)
 
+        # --- Speed-Time Table ---
+        self.speed_time_table = QTableWidget()
+        self.speed_time_table.setColumnCount(2)
+        self.speed_time_table.setHorizontalHeaderLabels(["Speed (%)", "Time (s)"])
+        self.speed_time_table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
+        self.speed_time_table.setStyleSheet(
+            """
+            QTableWidget {
+                font-size: 16px;
+                background-color: #222;
+                color: white;
+                border: 1px solid white;
+            }
+            QTableWidget::item {
+                padding: 5px;
+            }
+            """
+        )
+        self.load_speed_time_table()
+
+        # Add the table to the layout
+        layout.addWidget(QLabel("Speed-Time Table:", self))
+        layout.addWidget(self.speed_time_table)
+
         # --- Save and Close Buttons ---
         button_layout = QGridLayout()
         
@@ -129,8 +153,18 @@ class SettingsWindow(QWidget):
                 value = size_values.get(ingredient, 0.0)
                 self.spin_boxes[key].setValue(value)
 
+    def load_speed_time_table(self):
+        """Load the speed-time table from settings."""
+        self.speed_time_table.setRowCount(0)  # Clear existing rows
+        for row, entry in enumerate(self.app_settings.get("speed_time_table", [])):
+            self.speed_time_table.insertRow(row)
+            speed_item = QTableWidgetItem(str(entry["speed"]))
+            time_item = QTableWidgetItem(str(entry["time"]))
+            self.speed_time_table.setItem(row, 0, speed_item)
+            self.speed_time_table.setItem(row, 1, time_item)
+
     def save_settings(self):
-        """Save the ingredient values for the selected flavor."""
+        """Save the ingredient values and speed-time table."""
         selected_flavor = self.flavor_dropdown.currentText()
         if selected_flavor not in self.app_settings["sizes"]:
             self.app_settings["sizes"][selected_flavor] = {}
@@ -141,9 +175,17 @@ class SettingsWindow(QWidget):
                 key = f"{size}_{ingredient}"
                 self.app_settings["sizes"][selected_flavor][size][ingredient] = self.spin_boxes[key].value()
 
+        # Save speed-time table
+        speed_time_table = []
+        for row in range(self.speed_time_table.rowCount()):
+            speed = float(self.speed_time_table.item(row, 0).text())
+            time = float(self.speed_time_table.item(row, 1).text())
+            speed_time_table.append({"speed": speed, "time": time})
+        self.app_settings["speed_time_table"] = speed_time_table
+
         # Save settings to file
         settings.save_settings(self.app_settings)
-        print(f"[INFO] Saved settings for {selected_flavor}.")
+        print("[INFO] Saved settings, including speed-time table.")
         if hasattr(self, 'save_settings_callback'):
             self.save_settings_callback()  # Trigger callback to reload settings
 
