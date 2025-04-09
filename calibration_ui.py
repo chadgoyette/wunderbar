@@ -48,6 +48,7 @@ class CalibrationUI(QWidget):
         self.input_weight.setPlaceholderText("Enter known weight (grams)")
         self.input_weight.setValidator(QDoubleValidator(0.0, 9999.99, 2))  # Allow only numbers with up to 2 decimals
         self.input_weight.setInputMethodHints(Qt.ImhPreferNumbers)
+        self.input_weight.setFixedSize(200, 40)  # Set a taller and less wide text box
 
         self.capture_button = QPushButton("Capture Known Weight")
         self.capture_button.clicked.connect(self.capture_known_weight)
@@ -63,21 +64,52 @@ class CalibrationUI(QWidget):
         self.save_button.setVisible(True)
         self.save_button.clicked.connect(self.save_calibration)
 
+        # Set uniform width for buttons and text boxes
+        uniform_width = 200
+        self.tare_button.setFixedSize(uniform_width, 40)
+        self.input_weight.setFixedSize(uniform_width, 40)
+        self.compute_button.setFixedSize(uniform_width, 40)
+        self.capture_button.setFixedSize(uniform_width, 40)
+        self.save_button.setFixedSize(uniform_width, 40)
+
         # Layout
         layout = QVBoxLayout()
-        top_layout = QHBoxLayout()
-        top_layout.addWidget(self.exit_button, alignment=Qt.AlignRight)
-        layout.addLayout(top_layout)
 
-        layout.addWidget(self.instructions)
-        layout.addWidget(self.tare_button)
-        layout.addWidget(self.label_zero)
-        layout.addWidget(self.input_weight)
-        layout.addWidget(self.capture_button)
-        layout.addWidget(self.label_known_weight)
-        layout.addWidget(self.compute_button)
-        layout.addWidget(self.live_reading_label)
-        layout.addWidget(self.save_button)
+        # Create a grid layout for two columns
+        grid_layout = QHBoxLayout()
+
+        # Left column
+        left_column = QVBoxLayout()
+        left_column.addWidget(self.tare_button, alignment=Qt.AlignTop)
+        left_column.addWidget(self.input_weight, alignment=Qt.AlignTop)
+        left_column.addWidget(self.compute_button, alignment=Qt.AlignTop)
+
+        # Right column
+        right_column = QVBoxLayout()
+        right_column.addSpacing(40)  # Add blank space at the top
+        right_column.addWidget(self.capture_button, alignment=Qt.AlignTop)
+        right_column.addWidget(self.save_button, alignment=Qt.AlignTop)
+
+        # Add columns to the grid layout
+        grid_layout.addLayout(left_column)
+        grid_layout.addLayout(right_column)
+
+        # Add the grid layout to the main layout
+        layout.addLayout(grid_layout)
+
+        layout.addWidget(self.label_zero, alignment=Qt.AlignTop)
+        layout.addWidget(self.label_known_weight, alignment=Qt.AlignTop)
+        layout.addWidget(self.live_reading_label, alignment=Qt.AlignTop)
+
+        # Move instructions to the bottom
+        layout.addWidget(self.instructions, alignment=Qt.AlignBottom)
+
+        # Add the red "X" button to the bottom right
+        bottom_layout = QHBoxLayout()
+        bottom_layout.addStretch()  # Add stretch to push the button to the right
+        bottom_layout.addWidget(self.exit_button, alignment=Qt.AlignRight)
+        layout.addLayout(bottom_layout)
+
         self.setLayout(layout)
 
         # Variables

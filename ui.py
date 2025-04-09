@@ -151,7 +151,12 @@ class WeightDisplay(QWidget):
 
     def rpm_loop(self):
         """Continuously update RPM in a separate thread."""
+        first_run = True  # Track if this is the first run
         while self.rpm_thread_running:
+            if first_run:
+                self.motor.pulse_count = 0  # Reset pulse count on the first run
+                time.sleep(0.5)  # Allow motor to stabilize before first RPM calculation
+                first_run = False
             rpm = self.motor.get_rpm()  # This is rotor RPM
             if self.rpm_thread_running:
                 self.rpm_label.setText(f"RPM: {rpm:.2f}")  # Display rotor RPM
@@ -174,6 +179,8 @@ class WeightDisplay(QWidget):
 
     def start_motor(self):
         """Start the motor at stored speed."""
+        self.motor.stop()  # Ensure the motor is fully stopped before starting
+        self.motor.pulse_count = 0  # Reset pulse count to ensure accurate RPM calculation
         self.motor.start()
         self.motor_speed = self.app_settings["rotor_speed"]
         self.motor.set_speed(self.motor_speed)
@@ -187,17 +194,19 @@ class WeightDisplay(QWidget):
         QApplication.processEvents()
 
     def increase_speed(self):
-        """Increase motor speed by 10% (max 100%)."""
+        """Increase motor speed by 5% (max 100%)."""
         if self.motor_speed < 100:
-            self.motor_speed += 10
+            self.motor_speed += 5
+            self.motor_speed = min(self.motor_speed, 100)  # Ensure it doesn't exceed 100%
             self.motor.set_speed(self.motor_speed)
             self.speed_label.setText(f"Motor Speed: {self.motor_speed}%")
             QApplication.processEvents()
 
     def decrease_speed(self):
-        """Decrease motor speed by 10% (min 0%)."""
+        """Decrease motor speed by 5% (min 0%)."""
         if self.motor_speed > 0:
-            self.motor_speed -= 10
+            self.motor_speed -= 5
+            self.motor_speed = max(self.motor_speed, 0)  # Ensure it doesn't go below 0%
             self.motor.set_speed(self.motor_speed)
             self.speed_label.setText(f"Motor Speed: {self.motor_speed}%")
             QApplication.processEvents()
@@ -238,6 +247,7 @@ class WeightDisplay(QWidget):
         self.rpm_thread_running = False  # Stop the RPM thread
         if self.rpm_thread.is_alive():
             self.rpm_thread.join()  # Wait for the thread to finish
+        self.motor.stop()  # Ensure the motor is stopped if running
         super().closeEvent(event)  # Call the parent class's closeEvent
 
     def closeProgram(self):

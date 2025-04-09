@@ -50,7 +50,7 @@ class MainUI(QWidget):
         self.app_settings = settings.load_settings()
         print("[DEBUG] Initializing hardware components...")
         self.load_cell = LoadCell(calibration_factor=0.002965)  # Re-enable LoadCell initialization
-        self.motor = BLDCMotor(pwm_pin=5, speed_pin=16, en_pin=20, brk_pin=19)  # Initialize motor with specific pins
+        self.motor = BLDCMotor(pwm_pin=5, speed_pin=16, en_pin=20, brk_pin=19)  # Re-enable Motor initialization
         print("[DEBUG] MainUI initialized.")
         self.setWindowTitle("Ice Shaver Main UI")
         self.setFixedSize(800, 480)
@@ -61,7 +61,6 @@ class MainUI(QWidget):
         self.motor_settings_window = None  # Initialize motor settings window as None
         self.original_offset = self.load_cell.offset  # Store the original offset
         self.overshoot_compensation = self.load_overshoot_compensation()
-        self.interlock_popup_shown = False  # Track if the interlock popup is shown
 
         # --- Rotor speed display (absolute positioning) ---
         self.rotor_speed_label = QLabel(f"Rotor Speed Setting: {self.app_settings['rotor_speed']}%", self)
@@ -194,22 +193,9 @@ class MainUI(QWidget):
         button.setStyleSheet("font-size: 16px; background-color: #888; color: white;")
 
     def show_interlock_warning(self):
-        """Display a popup warning when the interlock is triggered."""
-        if not self.interlock_popup_shown:
-            self.interlock_popup_shown = True
-            QMessageBox.warning(
-                self,
-                "Safety Interlock Triggered",
-                "The lid is open! The motor has been stopped for safety. Close the lid and acknowledge this message to continue."
-            )
-            self.interlock_popup_shown = False
+        QMessageBox.warning(self, "Cover Open", "Cover is open – motor stopped for safety. Please close the cover and try again.")
 
     def start_process(self):
-        """Start the process, ensuring the interlock is not triggered."""
-        if self.motor.interlock_triggered():
-            self.show_interlock_warning()
-            return
-
         selected_size = None
         for size, btn in self.size_buttons.items():
             if btn.isChecked():
@@ -242,8 +228,8 @@ class MainUI(QWidget):
         self.update_ui_for_state()
 
     def next_step(self):
-        """Handle the next step in the process."""
         if self.motor.interlock_triggered():
+            self.motor.check_interlock_and_stop()
             self.show_interlock_warning()
             return
 
@@ -308,7 +294,6 @@ class MainUI(QWidget):
         return max(target_weight - compensation, 0)  # Ensure the target is not negative
 
     def update_weight(self):
-        """Update the weight and handle interlock checks."""
         # Ensure gauge is initialized before updating its value
         if not hasattr(self, 'gauge'):
             self.gauge = GaugeWidget()

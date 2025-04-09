@@ -5,12 +5,11 @@ import RPi.GPIO as GPIO
 
 class BLDCMotor:
     def __init__(self, pwm_pin, speed_pin, en_pin, brk_pin, motor_pulley_diameter=22, rotor_pulley_diameter=95, dir_pin=12):
-        self.pwm_pin = pwm_pin  # PWM pin for motor speed control
-        self.speed_pin = speed_pin  # Pin for speed feedback (e.g., tachometer)
-        self.en_pin = en_pin  # Enable pin for motor
-        self.brk_pin = brk_pin  # Brake pin for motor
+        self.pwm_pin = pwm_pin
+        self.speed_pin = speed_pin
+        self.en_pin = en_pin
+        self.brk_pin = brk_pin
         self.dir_pin = dir_pin  # Direction control pin
-        self.interlock_pin = 24  # Change to a different GPIO pin
         self.motor_pulley_diameter = motor_pulley_diameter
         self.rotor_pulley_diameter = rotor_pulley_diameter
         self.pulse_count = 0
@@ -18,8 +17,9 @@ class BLDCMotor:
         self.was_interrupted = False
 
         # Safety interlock setup
+        self.interlock_pin = 25
         GPIO.setmode(GPIO.BCM)
-        GPIO.setup(self.interlock_pin, GPIO.IN, pull_up_down=GPIO.PUD_UP)  # Use pull-up resistor
+        GPIO.setup(self.interlock_pin, GPIO.IN)
 
         self.pi = pigpio.pi()
         if not self.pi.connected:
@@ -35,10 +35,9 @@ class BLDCMotor:
         self.pi.write(self.brk_pin, 1)
         self.pi.set_PWM_frequency(self.pwm_pin, 4000)
 
-        # Hard-code motor direction to clockwise (GPIO-12 set HIGH)
-        # IMPORTANT: This direction is fixed and should not be changed dynamically.
-        self.pi.write(self.dir_pin, 0)  # Set GPIO-12 HIGH for clockwise direction
-        print("[INFO] Motor direction hard-coded to clockwise (GPIO-12 HIGH).")
+        # Set direction pin to HIGH permanently
+        self.pi.write(self.dir_pin, 0)  # Set GPIO-12 HIGH permanently
+        print("[INFO] Motor direction permanently set to HIGH (GPIO-12 HIGH).")
 
         self.callback = self.pi.callback(self.speed_pin, pigpio.RISING_EDGE, self._pulse_callback)
 
@@ -50,9 +49,7 @@ class BLDCMotor:
 
     def interlock_triggered(self):
         """Check if the safety interlock (lid) is triggered."""
-        state = GPIO.input(self.interlock_pin)
-        print(f"[DEBUG] Interlock state: {'TRIGGERED (Lid Open)' if state == GPIO.HIGH else 'SAFE (Lid Closed)'}")
-        return state == GPIO.HIGH  # HIGH means lid is open
+        return GPIO.input(self.interlock_pin) == GPIO.HIGH
 
     def check_interlock_and_stop(self):
         """Stop the motor if the interlock is triggered."""
@@ -93,8 +90,11 @@ class BLDCMotor:
 
             print("[DEBUG] Enabling motor and releasing brake...")
             self.callback = self.pi.callback(self.speed_pin, pigpio.RISING_EDGE, self._pulse_callback)  # Reinitialize callback
+            self.pulse_count = 0  # Reset pulse count to ensure accurate RPM calculation
+
             self.pi.write(self.en_pin, 0)
             self.pi.write(self.brk_pin, 0)
+            time.sleep(0.5)  # Allow motor to stabilize before RPM calculation
             print("[INFO] Motor enabled and brake released.")
             return True
         except Exception as e:
